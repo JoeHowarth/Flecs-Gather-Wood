@@ -9,6 +9,18 @@
       "group": { "kind": "build", "isDefault": true },
       "problemMatcher": ["$gcc"],
       "detail": "CMake template build task"
+    },
+    {
+      "label": "Run Executable",
+      "type": "shell",
+      "command": "clear; cmake --build build; ${workspaceFolder}/build/FlecsGatherWood",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        // "focus": true,
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
     }
   ]
 }

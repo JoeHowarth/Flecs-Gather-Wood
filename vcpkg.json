@@ -1,5 +1,5 @@
 {
   "name": "flecs-gather-wood",
   "version-string": "1.0.0",
-  "dependencies": ["fmt"]
+  "dependencies": ["fmt", "flecs", "sfml"]
 }

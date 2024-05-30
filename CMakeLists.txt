@@ -18,4 +18,14 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/i
 
 # Find and link dependencies (example: fmt)
 find_package(fmt CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
+find_package(flecs CONFIG REQUIRED)
+find_package(SFML COMPONENTS system window graphics CONFIG REQUIRED)
+
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        sfml-graphics
+        sfml-window
+        sfml-system
+        fmt::fmt
+        flecs::flecs
+)
