@@ -22,7 +22,7 @@ int tiles[16] = {
 };
 
 int main() {
-  auto window = sf::RenderWindow{{1920u, 1080u}, "Asteroids"};
+  auto window = sf::RenderWindow{{1920u, 1080u}, "Watchem Gatherum"};
   sf::View view = initWindow(window);
 
   flecs::world ecs;

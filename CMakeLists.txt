@@ -29,3 +29,5 @@ target_link_libraries(${PROJECT_NAME}
         fmt::fmt
         flecs::flecs
 )
+
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)
