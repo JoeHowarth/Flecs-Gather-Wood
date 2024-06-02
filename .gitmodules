@@ -1,0 +1,3 @@
+[submodule "src/pathfinding"]
+	path = src/pathfinding
+	url = git@github.com:JoeHowarth/pathfinding.git

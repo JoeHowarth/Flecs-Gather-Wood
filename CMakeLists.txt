@@ -11,7 +11,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
 
 # Add source files
-add_executable(${PROJECT_NAME} src/main.cpp)
+add_executable(
+    ${PROJECT_NAME} 
+    src/main.cpp 
+    # src/pathfinding/pathfinders.cpp
+    )
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

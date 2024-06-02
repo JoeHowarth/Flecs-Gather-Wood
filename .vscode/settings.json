@@ -11,5 +11,10 @@
     "**/Thumbs.db": true,
     "node_modules/": true,
     "**/node_modules": true
+  },
+  "files.associations": {
+    "*.css": "postcss",
+    "queue": "cpp",
+    "vector": "cpp"
   }
 }
