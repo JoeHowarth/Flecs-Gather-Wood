@@ -1,4 +1,7 @@
 {
+  "triggerTaskOnSave.tasks": {
+    "CMake: build": ["src/**/*.cpp", "src/**/*.h"]
+  },
   "files.exclude": {
     "**/.git": true,
     "**/.svn": true,
