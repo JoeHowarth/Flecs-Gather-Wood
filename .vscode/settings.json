@@ -15,6 +15,18 @@
   "files.associations": {
     "*.css": "postcss",
     "queue": "cpp",
-    "vector": "cpp"
+    "vector": "cpp",
+    "concepts": "cpp",
+    "array": "cpp",
+    "iostream": "cpp",
+    "deque": "cpp",
+    "__bit_reference": "cpp",
+    "__hash_table": "cpp",
+    "__tree": "cpp",
+    "map": "cpp",
+    "set": "cpp",
+    "string": "cpp",
+    "string_view": "cpp",
+    "unordered_map": "cpp"
   }
 }

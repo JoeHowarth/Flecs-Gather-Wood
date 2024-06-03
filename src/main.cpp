@@ -2,49 +2,56 @@
 #include <fmt/core.h>
 
 #include <SFML/Graphics.hpp>
+#include <cassert>
 #include <iostream>
+#include <random>
 
-#include "pathfinding/astar.h"
+#include "components.h"
+#include "newtype.h"
+#include "pathfinder.h"
+#include "tilemap.h"
+#include "trees.h"
+#include "util.h"
+#include "workers.h"
 
-sf::View initWindow(sf::RenderWindow& window) {
-    window.setFramerateLimit(144);
-    sf::Vector2u windowSize = window.getSize();
-    sf::View     view;
-    view.setCenter(0, 0);
-    view.setSize(
-        static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)
-    );
-    window.setView(view);
-    return view;
+Tilemap makeTilemap() {
+    using Tilemap::Grass;
+    using Tilemap::Water;
+
+    return {
+        {5, 5},
+        {
+            Water, Grass, Grass, Grass, Water,  // don't format
+            Water, Grass, Grass, Grass, Grass,  // don't format
+            Grass, Grass, Grass, Grass, Grass,  // don't format
+            Water, Grass, Grass, Grass, Water,  // don't format
+            Water, Grass, Grass, Grass, Water,  // don't format
+        }
+    };
 }
 
-enum TileType {
-    Water,
-    Grass,
-    Tree
-};
-
-std::array<TileType, 25> tiles = {
-    Water, Grass, Grass, Grass, Water,  // don't format
-    Water, Grass, Grass, Grass, Grass,  // don't format
-    Grass, Grass, Grass, Grass, Grass,  // don't format
-    Water, Grass, Tree,  Tree,  Water,  // don't format
-    Water, Grass, Tree,  Grass, Water,  // don't format
-};
+sf::View   initWindow(sf::RenderWindow& window);
+Pathfinder pathfinderFromTilemap(const Tilemap& map);
+void       simulationUpdate(
+          flecs::world& ecs, const Tilemap& map, Pathfinder& pathfinder
+      );
 
 int main() {
-    TestSimplePath();
-    TestPathWithObstacle();
-
-    auto     window = sf::RenderWindow{{1920u, 1080u}, "Watchem Gatherum"};
-    sf::View view   = initWindow(window);
+    auto      window = sf::RenderWindow{{1920u, 1080u}, "Watchem Gatherum"};
+    sf::View  view   = initWindow(window);
+    sf::Clock frameClock;
+    sf::Clock simulationClock;
 
     flecs::world ecs;
+    Tilemap      map        = makeTilemap();
+    Pathfinder   pathfinder = pathfinderFromTilemap(map);
 
-    ecs.component<sf::Vector2i>("Position");
-    ecs.entity("Player").set<sf::Vector2i>({0, 0});
+    registerComponents(ecs);
+    spawnWorkers(ecs, 2, map);
+    spawnTrees(ecs, 15, map);
 
-    while (window.isOpen()) {
+    for (int frame = -1; window.isOpen(); ++frame) {
+        sf::Time deltaTime = frameClock.restart();
         window.clear(sf::Color::Black);
 
         for (auto event = sf::Event{}; window.pollEvent(event);) {
@@ -69,36 +76,52 @@ int main() {
             }
         }
 
-        auto w = tiles.size() / 5;
-        for (int i = 0; i < tiles.size(); i++) {
-            const int x = i % w;
-            const int y = i / w;
+        if (simulationClock.getElapsedTime().asMilliseconds() > 500) {
+            simulationUpdate(ecs, map, pathfinder);
+            simulationClock.restart();
+        };
 
-            sf::RectangleShape tile;
-            tile.setSize({100, 100});
-            tile.setPosition(x * 100, y * 100);
-            if (tiles[i] == 1) {
-                tile.setFillColor(sf::Color::Green);
-            } else {
-                tile.setFillColor(sf::Color::Blue);
-            }
-            window.draw(tile);
-        }
+        map.render(window);
 
-        ecs.each([=, &window](flecs::entity e, sf::Vector2i& pos) {
-            pos.x = pos.x + 1;
-            pos.y += pos.x / w;
-            fmt::println("x: {}, y: {}", pos.x, pos.y);
+        renderWorkers(ecs, map);
+        renderTrees(ecs, map);
 
-            sf::RectangleShape player;
-            player.setSize({100, 100});
-            player.setPosition(pos.x * 100, pos.y * 100);
-            player.setFillColor(sf::Color::Red);
-            window.draw(player);
-        });
-
+        textDrawer.display(window);
+        debugDrawer.display(window);
         window.display();
     }
 
     // std::cout << "Hello, World!" << std::endl;
+}
+
+void simulationUpdate(
+    flecs::world& ecs, const Tilemap& map, Pathfinder& pathfinder
+) {
+    Tick* tick = ecs.get_mut<Tick>();
+    tick->v += 1;
+    fmt::println("[simulationUpdate] tick: {}\n", tick->v);
+
+    assignTasks(ecs, map);
+    updateMoveTo(ecs, map, pathfinder);
+}
+
+Pathfinder pathfinderFromTilemap(const Tilemap& map) {
+    std::vector<unsigned char> pathmap(map.tiles.size());
+    std::transform(
+        map.tiles.begin(), map.tiles.end(), pathmap.begin(),
+        [](Tilemap::TileType t) { return t == Tilemap::Grass ? 0 : 1; }
+    );
+    return Pathfinder{.map = pathmap, .mapDim = map.dim};
+}
+
+sf::View initWindow(sf::RenderWindow& window) {
+    window.setFramerateLimit(144);
+    sf::Vector2u windowSize = window.getSize();
+    sf::View     view;
+    view.setCenter(0, 0);
+    view.setSize(
+        static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)
+    );
+    window.setView(view);
+    return view;
 }
