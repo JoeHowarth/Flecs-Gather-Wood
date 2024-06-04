@@ -50,7 +50,7 @@ int main() {
     spawnWorkers(ecs, 2, map);
     spawnTrees(ecs, 15, map);
 
-    for (int frame = -1; window.isOpen(); ++frame) {
+    for (int frame = 0; window.isOpen(); ++frame) {
         sf::Time deltaTime = frameClock.restart();
         window.clear(sf::Color::Black);
 
@@ -77,6 +77,11 @@ int main() {
         }
 
         if (simulationClock.getElapsedTime().asMilliseconds() > 500) {
+            // Only clear the debug drawer every simulation tick since 
+            // it will only be written to during the simulation update
+            // and otherwise it will be cleared every frame
+            debugDrawer.clear(SIM_DEBUG_LAYER);
+
             simulationUpdate(ecs, map, pathfinder);
             simulationClock.restart();
         };
@@ -109,7 +114,7 @@ Pathfinder pathfinderFromTilemap(const Tilemap& map) {
     std::vector<unsigned char> pathmap(map.tiles.size());
     std::transform(
         map.tiles.begin(), map.tiles.end(), pathmap.begin(),
-        [](Tilemap::TileType t) { return t == Tilemap::Grass ? 0 : 1; }
+        [](Tilemap::TileType t) { return t == Tilemap::Grass ? 1 : 0; }
     );
     return Pathfinder{.map = pathmap, .mapDim = map.dim};
 }

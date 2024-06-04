@@ -2,6 +2,8 @@
 
 #include <flecs.h>
 
+#include <functional>
+
 #include "components.h"
 #include "pathfinder.h"
 #include "tilemap.h"
@@ -48,25 +50,33 @@ void registerTaskTypes(flecs::world& ecs) {
 }
 
 void assignTasks(flecs::world& ecs, const Tilemap& map) {
+    // auto filter =
+    //     ecs.rule_builder<WorkerTag, Position>().without<Task>().build();
     auto filter =
-        ecs.filter_builder<WorkerTag, Position>().without<Task>().build();
+        ecs.filter_builder<WorkerTag, Position>().without<MoveTo>().build();
+
+    // ecs.each([](flecs::entity e, WorkerTag) {
+    //     fmt::println(
+    //         "[assignTasks] Worker {} has MoveTo {}", e, e.has<MoveTo>()
+    //     );
+    // });
 
     ecs.defer_begin();
     filter.each([&ecs, &map](flecs::entity e, WorkerTag, Position& pos) {
         fmt::println("[assignTasks] Assigning task to worker {}", e.id());
 
         Position target = randomTile(Tilemap::Grass, map);
-        MoveTo moveTo{.target = target, .path = std::nullopt};
+        MoveTo   moveTo{.target = target, .path = std::nullopt};
         e.set(moveTo);
         fmt::println("[assignTasks] Sanity check: {}", e.has<MoveTo>());
     });
     ecs.defer_end();
 
-    ecs.each([](flecs::entity e, WorkerTag) {
-        fmt::println(
-            "[assignTasks] Worker {} has MoveTo {}", e, e.has<MoveTo>()
-        );
-    });
+    // ecs.each([](flecs::entity e, WorkerTag) {
+    //     fmt::println(
+    //         "[assignTasks] Worker {} has MoveTo {}", e, e.has<MoveTo>()
+    //     );
+    // });
 }
 
 void updateMoveTo(
@@ -88,6 +98,11 @@ void updateMoveTo(
                 return;
             }
         }
+
+        debugDrawer.lineStripMap(
+            moveTo.path->begin(), moveTo.path->end(),
+            [&map](Position pos) { return map.tileToWorld(pos); }
+        );
 
         // If we've reached the target, remove the MoveTo component
         if (moveTo.path->empty()) {

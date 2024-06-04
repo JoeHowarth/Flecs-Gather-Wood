@@ -7,6 +7,7 @@
 #include <SFML/Graphics.hpp>
 #include <chrono>
 #include <filesystem>
+#include <functional>
 #include <iomanip>  // Include this header for std::fixed and std::setprecision
 #include <iostream>
 #include <random>
@@ -167,38 +168,44 @@ sf::Font loadFont(const std::string& path) {
 }
 
 struct Line : public sf::Drawable {
-    const std::unique_ptr<sf::Vertex[]> vertices;
-    const std::size_t                   vertexCount;
-    const sf::PrimitiveType             type;
+    sf::Vertex vertices[2];
 
-    Line(const Vec2 start, const Vec2 end)
-        : vertices(std::unique_ptr<sf::Vertex[]>{new sf::Vertex[2]{start, end}})
-        ,
-        // std::make_unique<sf::Vertex[]>( 2) with per-element initialization
-        vertexCount(2)
-        , type(sf::Lines) {}
+    Line(const Vec2 start, const Vec2 end) {
+        this->vertices[0] = start;
+        this->vertices[1] = end;
+    }
 
-    Line(
-        const sf::Vertex* vertices,
-        std::size_t       vertexCount,
-        sf::PrimitiveType type
-    )
-        : vertices(std::make_unique<sf::Vertex[]>(vertexCount))
-        , vertexCount(vertexCount)
-        , type(type) {
-        for (std::size_t i = 0; i < vertexCount; i++) {
-            this->vertices[i] = vertices[i];
+    virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const {
+        target.draw((sf::Vertex*)vertices, 2, sf::Lines, states);
+    }
+};
+
+struct LineStrip : public sf::Drawable {
+    std::vector<sf::Vertex> vertices;
+
+    LineStrip(const std::vector<Vec2>& points) {
+        LineStrip(points, sf::Color::Red);
+    }
+
+    LineStrip(const std::vector<Vec2>& points, sf::Color color) {
+        for (const auto& point : points) {
+            this->vertices.push_back(sf::Vertex(point, color));
         }
     }
 
     virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const {
-        sf::Vertex* verticesP = this->vertices.get();
-        target.draw(verticesP, vertexCount, type, states);
+        target.draw(vertices.data(), vertices.size(), sf::LineStrip, states);
     }
+};
+
+template <typename T, typename Func>
+concept CallableWith = requires(Func f, T t) {
+    { f(t) } -> std::convertible_to<Vec2>;
 };
 
 struct LayeredDrawer {
     std::vector<std::vector<std::unique_ptr<sf::Drawable>>> layers;
+    const bool clearEveryFrame = false;
 
     LayeredDrawer(int numLayers = 1) : layers(numLayers) {}
 
@@ -206,20 +213,27 @@ struct LayeredDrawer {
         this->layers[layer].push_back(std::move(drawable));
     }
 
-    void draw(
-        const sf::Vertex*       vertices,
-        std::size_t             vertexCount,
-        sf::PrimitiveType       type,
-        const sf::RenderStates& states = sf::RenderStates::Default,
-        int                     layer  = 0
+    void line(const Vec2 start, const Vec2 end, int layer = 0) {
+        this->layers[layer].push_back(std::make_unique<Line>(start, end));
+    }
+
+    void lineStrip(
+        const std::vector<Vec2>& points,
+        sf::Color                color = sf::Color::Red,
+        int                      layer = 0
     ) {
-        this->layers[layer].push_back(
-            std::make_unique<Line>(vertices, vertexCount, type)
+        this->layers[layer].push_back(std::make_unique<LineStrip>(points, color)
         );
     }
 
-    void line(const Vec2 start, const Vec2 end, int layer = 0) {
-        this->layers[layer].push_back(std::make_unique<Line>(start, end));
+    template <std::forward_iterator It, typename Func>
+        requires CallableWith<
+            typename std::iterator_traits<It>::value_type,
+            Func>
+    void lineStripMap(It begin, It end, Func toWorld) {
+        std::vector<Vec2> path;
+        std::transform(begin, end, std::back_inserter(path), toWorld);
+        this->lineStrip(path, sf::Color::Red);
     }
 
     void point(const Vec2 point, int layer = 0) {
@@ -232,12 +246,18 @@ struct LayeredDrawer {
         );
     }
 
+    void clear(int layer) {
+        this->layers[layer].clear();
+    }
+
     void display(sf::RenderWindow& window) {
         for (auto& layer : this->layers) {
             for (const auto& drawable : layer) {
                 window.draw(*drawable);
             }
-            layer.clear();
+            if (this->clearEveryFrame) {
+                layer.clear();
+            }
         }
     }
 };
@@ -297,6 +317,7 @@ auto now() {
 /**** Bad Globals ****/
 TextDrawer    textDrawer("./open-sans/OpenSans-Bold.ttf");
 LayeredDrawer debugDrawer(1);
+const int     SIM_DEBUG_LAYER = 0;
 
 std::random_device rd;         // Seed
 std::mt19937       gen(rd());  // Mersenne Twister engine
