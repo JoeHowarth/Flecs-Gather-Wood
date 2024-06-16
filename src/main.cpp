@@ -41,10 +41,13 @@ int main() {
     sf::View  view   = initWindow(window);
     sf::Clock frameClock;
     sf::Clock simulationClock;
+    const int SIM_TICK_MS = 5;
 
     flecs::world ecs;
     Tilemap      map        = makeTilemap();
     Pathfinder   pathfinder = pathfinderFromTilemap(map);
+
+    ecs.set<flecs::Rest>({});
 
     registerComponents(ecs);
     spawnWorkers(ecs, 2, map);
@@ -76,8 +79,8 @@ int main() {
             }
         }
 
-        if (simulationClock.getElapsedTime().asMilliseconds() > 500) {
-            // Only clear the debug drawer every simulation tick since 
+        if (simulationClock.getElapsedTime().asMilliseconds() > SIM_TICK_MS) {
+            // Only clear the debug drawer every simulation tick since
             // it will only be written to during the simulation update
             // and otherwise it will be cleared every frame
             debugDrawer.clear(SIM_DEBUG_LAYER);
@@ -90,6 +93,8 @@ int main() {
 
         renderWorkers(ecs, map);
         renderTrees(ecs, map);
+
+        ecs.progress(deltaTime.asSeconds());
 
         textDrawer.display(window);
         debugDrawer.display(window);
