@@ -31,6 +31,8 @@ struct Tilemap {
                     tile.setFillColor(sf::Color::Blue);
                     break;
             }
+            tile.setOutlineColor(sf::Color(50, 50, 50));
+            tile.setOutlineThickness(1.f);
             window.draw(tile);
         }
     }
@@ -74,5 +76,5 @@ Position randomTile(Tilemap::TileType type, const Tilemap& map) {
         }
     }
     std::cerr << "Failed to find a tile of type " << type << std::endl;
-    throw std::runtime_error("Failed to find a tile of type"); 
+    throw std::runtime_error("Failed to find a tile of type");
 }

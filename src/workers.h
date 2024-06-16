@@ -1,8 +1,13 @@
 #pragma once
 
 #include <flecs.h>
+#include <fmt/core.h>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include <functional>
+#include <sstream>
+#include <type_traits>
 
 #include "components.h"
 #include "pathfinder.h"
@@ -36,24 +41,55 @@ struct MoveTo {
     std::optional<std::deque<Position>> path;
 };
 
+std::ostream& operator<<(std::ostream& os, const MoveTo& moveTo) {
+    os << "MoveTo{target: " << moveTo.target.v;
+    if (moveTo.path) {
+        os << ", path: [";
+        for (const auto& pos : *moveTo.path) {
+            os << pos.v << ", ";
+        }
+        os << "]";
+    } else {
+        os << ", path: null";
+    }
+    os << "}";
+
+    return os;
+}
+
+template <>
+struct fmt::formatter<MoveTo> : fmt::ostream_formatter {};
+
 // Target is a tree entity
 struct ChopTree {};
 
 // Target is a wood entity
 struct PickUpItem {};
 
+using Tasks = std::variant<MoveTo, ChopTree, PickUpItem>;
+
+struct GatherWoodBehavior {
+    std::deque<Tasks> tasks;
+};
+
 void registerTaskTypes(flecs::world& ecs) {
     ecs.component<Task>();
     ecs.component<MoveTo>().is_a<Task>();
     ecs.component<ChopTree>().is_a<Task>();
     ecs.component<PickUpItem>().is_a<Task>();
+    // ecs.component<GatherWoodBehavior>();
 }
+
+
 
 void assignTasks(flecs::world& ecs, const Tilemap& map) {
     // auto filter =
     //     ecs.rule_builder<WorkerTag, Position>().without<Task>().build();
-    auto filter =
-        ecs.filter_builder<WorkerTag, Position>().without<MoveTo>().build();
+    auto filter = ecs.filter_builder<WorkerTag, Position>()
+                      .without<MoveTo>()
+                      .without<ChopTree>()
+                      .without<PickUpItem>()
+                      .build();
 
     // ecs.each([](flecs::entity e, WorkerTag) {
     //     fmt::println(
@@ -61,16 +97,20 @@ void assignTasks(flecs::world& ecs, const Tilemap& map) {
     //     );
     // });
 
-    ecs.defer_begin();
-    filter.each([&ecs, &map](flecs::entity e, WorkerTag, Position& pos) {
-        fmt::println("[assignTasks] Assigning task to worker {}", e.id());
+    DeferGuard g(ecs);
+    filter.iter([&ecs, &map](flecs::iter& it) {
+        for (auto i : it) {
+            auto e = it.entity(i);
+            // e.get
 
-        Position target = randomTile(Tilemap::Grass, map);
-        MoveTo   moveTo{.target = target, .path = std::nullopt};
-        e.set(moveTo);
-        fmt::println("[assignTasks] Sanity check: {}", e.has<MoveTo>());
+            Position target = randomTile(Tilemap::Grass, map);
+            MoveTo   moveTo{.target = target, .path = std::nullopt};
+            fmt::println(
+                "[assignTasks] Assigning task to worker {}, {}", e.id(), moveTo
+            );
+            e.set(moveTo);
+        }
     });
-    ecs.defer_end();
 
     // ecs.each([](flecs::entity e, WorkerTag) {
     //     fmt::println(
@@ -82,8 +122,15 @@ void assignTasks(flecs::world& ecs, const Tilemap& map) {
 void updateMoveTo(
     flecs::world& ecs, const Tilemap& map, Pathfinder& pathfinder
 ) {
-    ecs.defer_begin();
+    DeferGuard g(ecs);
     ecs.each([&](flecs::entity e, MoveTo& moveTo, Position& pos) {
+        // If we're already at the target, remove the MoveTo component
+        if (pos == moveTo.target) {
+            fmt::println("[moveTo] Worker {} is already at target", e);
+            e.remove<MoveTo>();
+            return;
+        }
+
         // If we don't have a path, find one
         if (!moveTo.path) {
             moveTo.path = pathfinder.find(pos, moveTo.target);
@@ -116,13 +163,26 @@ void updateMoveTo(
                 fmt::println("[moveTo] Reached target: {}", pos.v);
             }
             e.remove<MoveTo>();
-            // ecs.remove<MoveTo>(e);
             return;
         }
         // Move along the path
-        pos = moveTo.path->front();
+        Position newPos = moveTo.path->front();
         moveTo.path->pop_front();
+        if (magnitude(newPos.v - pos.v) >= 2.f) {
+            fmt::println(
+                "[moveTo] Worker {} moved more than 1 tile: {} from {}", e,
+                newPos.v, pos.v
+            );
+            fmt::println("[moveTo] MoveTo: {}", moveTo);
+            exit(1);
+        }
+        if (map[newPos] != Tilemap::Grass) {
+            fmt::println(
+                "[moveTo] Worker {} moved to a non-grass tile: {} from {}", e, newPos.v, pos.v
+            );
+            exit(1);
+        }
+        pos = newPos;
         fmt::println("[moveTo] {} moved to: {}", e, pos.v);
     });
-    ecs.defer_end();
 }

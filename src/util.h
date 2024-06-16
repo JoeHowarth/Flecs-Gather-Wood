@@ -42,6 +42,12 @@ float crossProduct(const Vec2& v1, const Vec2& v2) {
 float magnitude(const Vec2& v) {
     return std::sqrt(v.x * v.x + v.y * v.y);
 }
+float magnitude(const Vec2I& v) {
+    return std::sqrt(v.x * v.x + v.y * v.y);
+}
+float magnitude(const Vec2U& v) {
+    return std::sqrt(v.x * v.x + v.y * v.y);
+}
 
 // Function to normalize a vector (get the unit vector)
 Vec2 normalize(const Vec2& v) {
@@ -78,15 +84,6 @@ std::pair<T, T> toPair(const sf::Vector2<T>& v) {
 }
 
 /**** Printing ****/
-
-// template <typename... Args>
-// void print(Args&&... args) {
-//   std::stringstream ss;
-//   (ss << ...
-//       << std::forward<Args>(
-//              args));  // Fold expression to handle multiple arguments
-//   std::cout << ss.str() << std::endl;
-// }
 
 template <typename T>
 T dbg(const T s) {
@@ -313,6 +310,18 @@ struct TextDrawer {
 auto now() {
     return std::chrono::high_resolution_clock::now();
 }
+
+/**** Flecs ****/
+
+struct DeferGuard {
+    flecs::world& ecs;
+    DeferGuard(flecs::world& ecs) : ecs(ecs) {
+        ecs.defer_begin();
+    }
+    ~DeferGuard() {
+        ecs.defer_end();
+    }
+};
 
 /**** Bad Globals ****/
 TextDrawer    textDrawer("./open-sans/OpenSans-Bold.ttf");
