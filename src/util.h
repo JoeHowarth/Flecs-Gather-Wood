@@ -48,6 +48,9 @@ float magnitude(const Vec2I& v) {
 float magnitude(const Vec2U& v) {
     return std::sqrt(v.x * v.x + v.y * v.y);
 }
+int magnitude2(const Vec2I& v) {
+    return v.x * v.x + v.y * v.y;
+}
 
 // Function to normalize a vector (get the unit vector)
 Vec2 normalize(const Vec2& v) {
@@ -322,6 +325,23 @@ struct DeferGuard {
         ecs.defer_end();
     }
 };
+
+/*** Match ****/
+
+template <typename... Fs>
+struct match : Fs... {
+    using Fs::operator()...;
+
+    // constexpr match(Fs &&... fs) : Fs{fs}... {}
+};
+template <class... Ts>
+match(Ts...) -> match<Ts...>;
+
+template <typename... Ts, typename... Fs>
+constexpr decltype(auto)
+operator|(std::variant<Ts...> const& v, match<Fs...> const& match) {
+    return std::visit(match, v);
+}
 
 /**** Bad Globals ****/
 TextDrawer    textDrawer("./open-sans/OpenSans-Bold.ttf");

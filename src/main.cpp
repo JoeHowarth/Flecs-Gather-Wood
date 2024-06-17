@@ -7,6 +7,7 @@
 #include <random>
 
 #include "components.h"
+#include "gather_wood_behavior.h"
 #include "newtype.h"
 #include "pathfinder.h"
 #include "tilemap.h"
@@ -32,16 +33,23 @@ Tilemap makeTilemap() {
 
 sf::View   initWindow(sf::RenderWindow& window);
 Pathfinder pathfinderFromTilemap(const Tilemap& map);
-void       simulationUpdate(
-          flecs::world& ecs, const Tilemap& map, Pathfinder& pathfinder
-      );
+
+void simulationUpdate(
+    flecs::world& ecs, const Tilemap& map, Pathfinder& pathfinder
+) {
+    Tick* tick = ecs.get_mut<Tick>();
+    tick->v += 1;
+    fmt::println("\n[simulationUpdate] tick: {}", tick->v);
+
+    gatherWoodBehaviorNaive(ecs, map, pathfinder);
+}
 
 int main() {
     auto      window = sf::RenderWindow{{1920u, 1080u}, "Watchem Gatherum"};
     sf::View  view   = initWindow(window);
     sf::Clock frameClock;
     sf::Clock simulationClock;
-    const int SIM_TICK_MS = 5;
+    const int SIM_TICK_MS = 500;
 
     flecs::world ecs;
     Tilemap      map        = makeTilemap();
@@ -50,8 +58,8 @@ int main() {
     ecs.set<flecs::Rest>({});
 
     registerComponents(ecs);
-    spawnWorkers(ecs, 2, map);
-    spawnTrees(ecs, 15, map);
+    spawnWorkers(ecs, 1, map);
+    spawnTrees(ecs, 2, map);
 
     for (int frame = 0; window.isOpen(); ++frame) {
         sf::Time deltaTime = frameClock.restart();
@@ -93,6 +101,7 @@ int main() {
 
         renderWorkers(ecs, map);
         renderTrees(ecs, map);
+        renderWood(ecs, map);
 
         ecs.progress(deltaTime.asSeconds());
 
@@ -100,19 +109,6 @@ int main() {
         debugDrawer.display(window);
         window.display();
     }
-
-    // std::cout << "Hello, World!" << std::endl;
-}
-
-void simulationUpdate(
-    flecs::world& ecs, const Tilemap& map, Pathfinder& pathfinder
-) {
-    Tick* tick = ecs.get_mut<Tick>();
-    tick->v += 1;
-    fmt::println("[simulationUpdate] tick: {}\n", tick->v);
-
-    assignTasks(ecs, map);
-    updateMoveTo(ecs, map, pathfinder);
 }
 
 Pathfinder pathfinderFromTilemap(const Tilemap& map) {
