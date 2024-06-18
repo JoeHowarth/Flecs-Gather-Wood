@@ -8,25 +8,33 @@
 
 #include "components.h"
 #include "gather_wood_behavior.h"
-#include "newtype.h"
+#include "htn.h"
 #include "pathfinder.h"
 #include "tilemap.h"
 #include "trees.h"
-#include "util.h"
+#include "utils/util.h"
 #include "workers.h"
 
 Tilemap makeTilemap() {
     using Tilemap::Grass;
     using Tilemap::Water;
+    auto G = Tilemap::Grass;
+    auto W = Tilemap::Water;
 
     return {
-        {5, 5},
+        {10, 10},
         {
-            Water, Grass, Grass, Grass, Water,  // don't format
-            Water, Grass, Grass, Grass, Grass,  // don't format
-            Grass, Grass, Grass, Grass, Grass,  // don't format
-            Water, Grass, Grass, Grass, Water,  // don't format
-            Water, Grass, Grass, Grass, Water,  // don't format
+            W, G, G, G, W, W, G, G, G, W,  // don't format
+            W, G, G, G, G, G, G, G, G, G,  // don't format
+            G, G, G, G, G, G, G, G, G, G,  // don't format
+            W, G, G, G, W, W, G, G, G, W,  // don't format
+            W, G, G, G, W, G, G, G, G, G,  // don't format
+            W, G, G, G, W, G, G, G, G, G,  // don't format
+            W, G, G, G, W, G, G, G, G, G,  // don't format
+            W, G, G, G, W, G, G, G, G, G,  // don't format
+            W, G, G, G, W, G, G, G, G, G,  // don't format
+            W, G, G, G, W, W, G, G, G, W,  // don't format
+
         }
     };
 }
@@ -42,14 +50,21 @@ void simulationUpdate(
     fmt::println("\n[simulationUpdate] tick: {}", tick->v);
 
     gatherWoodBehaviorNaive(ecs, map, pathfinder);
+
+    ecs.each([](const Count& count, const Position& pos) {
+        fmt::println("Wood at {}, count: {}", pos.v, count.v);
+    });
 }
 
 int main() {
+    htn_main();
+    return 0;
+
     auto      window = sf::RenderWindow{{1920u, 1080u}, "Watchem Gatherum"};
     sf::View  view   = initWindow(window);
     sf::Clock frameClock;
     sf::Clock simulationClock;
-    const int SIM_TICK_MS = 500;
+    const int SIM_TICK_MS = 200;
 
     flecs::world ecs;
     Tilemap      map        = makeTilemap();
@@ -58,8 +73,8 @@ int main() {
     ecs.set<flecs::Rest>({});
 
     registerComponents(ecs);
-    spawnWorkers(ecs, 1, map);
-    spawnTrees(ecs, 2, map);
+    spawnWorkers(ecs, 3, map);
+    spawnTrees(ecs, 10, map);
 
     for (int frame = 0; window.isOpen(); ++frame) {
         sf::Time deltaTime = frameClock.restart();
@@ -124,7 +139,7 @@ sf::View initWindow(sf::RenderWindow& window) {
     window.setFramerateLimit(144);
     sf::Vector2u windowSize = window.getSize();
     sf::View     view;
-    view.setCenter(0, 0);
+    // view.setCenter(0, 0);
     view.setSize(
         static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)
     );

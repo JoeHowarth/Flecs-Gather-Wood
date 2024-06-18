@@ -3,7 +3,7 @@
 #include <flecs.h>
 
 #include "components.h"
-#include "util.h"
+#include "utils/util.h"
 
 void renderWorkers(flecs::world& ecs, const Tilemap& map) {
     ecs.each([&map](WorkerTag, Position& pos) {

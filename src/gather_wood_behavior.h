@@ -13,7 +13,8 @@ void handleIdle(
     const flecs::filter<Position, TreeTag>& trees,
     GatherWoodBehavior&                     behavior,
     const Position&                         pos,
-    Pathfinder&                             pathfinder
+    Pathfinder&                             pathfinder,
+    std::vector<flecs::entity>&             targetedTrees
 ) {
     fmt::println("[handleIdle] Worker {} is idle. pos: {}", e.id(), pos.v);
 
@@ -53,6 +54,13 @@ void handleIdle(
             Position      treePos = treePosArr[i];
             fmt::println("[handleIdle] Tree pos: {}", treePos.v);
 
+            auto contains = [](auto& v, auto e) {
+                return std::find(v.begin(), v.end(), e) != v.end();
+            };
+            if (contains(targetedTrees, tree)) {
+                continue;
+            }
+
             int dist = magnitude2(treePos.v - pos.v);
             if (dist == 0) {
                 fmt::println(
@@ -61,6 +69,7 @@ void handleIdle(
                     e.id(), treePos.v
                 );
                 nextState = ChopingTree{.target = tree, .progress = 0};
+                targetedTrees.push_back(tree);
                 return;
             }
 
@@ -151,6 +160,16 @@ void handleChopingTree(
         "[chopingTree] Worker {} is chopping tree at {}. progress: {}", e,
         pos.v, chopping.progress
     );
+
+    if (!chopping.target.is_alive()) {
+        fmt::println(
+            "[chopingTree] Worker {} is dead while chopping tree at {}",
+            e, pos.v
+        );
+        return;
+
+    }
+
     chopping.progress += 1;
     if (chopping.progress >= 3) {
         fmt::println("[chopingTree] Worker {} finished chopping", e);
@@ -167,14 +186,19 @@ void gatherWoodBehaviorNaive(
 ) {
     auto workers =
         ecs.filter_builder<Position, GatherWoodBehavior, WorkerTag>().build();
-    auto trees = ecs.filter_builder<Position, TreeTag>().build();
+    auto trees =
+        ecs.filter_builder<Position, TreeTag>().without<Targeted>().build();
 
+    DeferGuard                 g(ecs);
+    std::vector<flecs::entity> targetedTrees;
     workers.each([&](flecs::entity e, Position& pos,
                      GatherWoodBehavior& behavior, WorkerTag) {
         std::visit(
             match{
                 [&](Idle) {
-                    handleIdle(ecs, e, trees, behavior, pos, pathfinder);
+                    handleIdle(
+                        ecs, e, trees, behavior, pos, pathfinder, targetedTrees
+                    );
                 },
                 [&](MoveTo& moveTo) {
                     handleMoveTo(e, pos, moveTo, behavior, map);
@@ -186,4 +210,7 @@ void gatherWoodBehaviorNaive(
             behavior.state
         );
     });
+    for (auto tree : targetedTrees) {
+        tree.add<Targeted>();
+    }
 }

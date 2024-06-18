@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "components.h"
-#include "util.h"
+#include "utils/util.h"
 
 struct Tilemap {
     enum TileType {

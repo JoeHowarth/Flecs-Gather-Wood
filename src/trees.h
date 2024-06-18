@@ -9,6 +9,7 @@
 #include "tilemap.h"
 
 void spawnWood(flecs::world& ecs, const Position& pos) {
+    fmt::println("Spawning wood at {}", pos);
     bool found;
     ecs.each([&pos, &found](
                  flecs::entity e, Count& count, WoodTag, const Position& p

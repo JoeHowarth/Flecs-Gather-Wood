@@ -4,8 +4,7 @@
 
 #include <deque>
 
-#include "newtype.h"
-#include "util.h"
+#include "utils/util.h"
 
 struct WorkerTag {};
 struct TreeTag {};
