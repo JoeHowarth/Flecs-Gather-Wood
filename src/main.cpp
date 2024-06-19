@@ -8,7 +8,8 @@
 
 #include "components.h"
 #include "gather_wood_behavior.h"
-#include "htn.h"
+// #include "htn/htn.h"
+#include "htn/htn2.h"
 #include "pathfinder.h"
 #include "tilemap.h"
 #include "trees.h"
@@ -57,7 +58,7 @@ void simulationUpdate(
 }
 
 int main() {
-    htn_main();
+    htn_main2();
     return 0;
 
     auto      window = sf::RenderWindow{{1920u, 1080u}, "Watchem Gatherum"};
